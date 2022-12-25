@@ -3,24 +3,43 @@ package com.love.discussionapp.core.auth
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GetTokenResult
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
+import com.love.discussionapp.core.data.repository.IDataStoreRepository
+import com.love.discussionapp.core.util.Constants
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 interface IAuth {
     val user: FirebaseUser?
+    val auth: FirebaseAuth
+    val accessToken: String?
 
     fun createAccount(email: String, password: String, onComplete: (AuthEvent) -> Unit)
     fun signIn(email: String, password: String, onComplete: (AuthEvent) -> Unit)
     fun logout()
+    fun getAccessToken(onComplete: (String?) -> Unit)
 }
 
 class Auth @Inject constructor() : IAuth {
     private var _auth: FirebaseAuth
     private var _user: MutableState<FirebaseUser?> = mutableStateOf(null)
+    private var _accessToken: MutableState<String?> = mutableStateOf(null)
+
+    override val accessToken: String?
+        get() = _accessToken.value
+
+    override val auth: FirebaseAuth
+        get() = _auth
 
     override val user: FirebaseUser?
         get() = _user.value
@@ -30,6 +49,25 @@ class Auth @Inject constructor() : IAuth {
         _auth = Firebase.auth
         _user.value = _auth.currentUser
         Log.d("Auth", "user: $_user")
+    }
+
+    override fun getAccessToken(onComplete: (String?) -> Unit) {
+        _user.value?.let {
+            it.getIdToken(true)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d("Auth", "result: ${Gson().toJson(task.result)}")
+                        _accessToken.value = task.result.token
+                        Log.d("Auth", "getAccessToken:success token: $_accessToken")
+                        onComplete(_accessToken.value)
+//                    CoroutineScope(Dispatchers.IO).launch {
+//                        dataStore.putString(Constants.ACCESS_TOKEN, _accessToken.value!!)
+//                    }
+                    } else {
+                        Log.w("Auth", "getAccessToken failed", task.exception)
+                    }
+                }
+        }
     }
 
     override fun createAccount(email: String, password: String, onComplete: (AuthEvent) -> Unit) {
@@ -67,6 +105,7 @@ class Auth @Inject constructor() : IAuth {
     override fun logout() {
         _auth.signOut()
         _user.value = null
+        _accessToken.value = null
     }
 }
 

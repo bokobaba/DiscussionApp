@@ -1,0 +1,12 @@
+query GetCommunities {
+    communities(first: 10) {
+        edges {
+            node {
+                name
+                bannerImage
+            }
+            cursor
+        }
+        totalCount
+    }
+}
