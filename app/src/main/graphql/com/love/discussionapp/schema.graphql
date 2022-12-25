@@ -1,0 +1,699 @@
+"""
+The `@defer` directive may be provided for fragment spreads and inline fragments to inform the executor to delay the execution of the current fragment to indicate deprioritization of the current fragment. A query with `@defer` directive will cause the request to potentially return multiple responses, where non-deferred data is delivered in the initial response and data deferred is delivered in a subsequent response. `@include` and `@skip` take precedence over `@defer`.
+"""
+directive @defer(
+  """
+  If this argument label has a value other than null, it will be passed on to the result of this defer directive. This label is intended to give client applications a way to identify to which fragment a deferred result belongs to.
+  """
+  label: String
+
+  """
+  Deferred when true.
+  """
+  if: Boolean
+) on FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"""
+The `@stream` directive may be provided for a field of `List` type so that the backend can leverage technology such as asynchronous iterators to provide a partial list in the initial response, and additional list items in subsequent responses. `@include` and `@skip` take precedence over `@stream`.
+"""
+directive @stream(
+  """
+  If this argument label has a value other than null, it will be passed on to the result of this stream directive. This label is intended to give client applications a way to identify to which fragment a streamed result belongs to.
+  """
+  label: String
+
+  """
+  The initial elements that shall be send down to the consumer.
+  """
+  initialCount: Int! = 0
+
+  """
+  Streamed when true.
+  """
+  if: Boolean
+) on FIELD
+
+directive @authorize(
+  """
+  The name of the authorization policy that determines access to the annotated resource.
+  """
+  policy: String
+
+  """
+  Roles that are allowed to access the annotated resource.
+  """
+  roles: [String!]
+
+  """
+  Defines when when the resolver shall be executed.By default the resolver is executed after the policy has determined that the current user is allowed to access the field.
+  """
+  apply: ApplyPolicy! = BEFORE_RESOLVER
+) repeatable on SCHEMA | OBJECT | FIELD_DEFINITION
+
+enum ApplyPolicy {
+  BEFORE_RESOLVER
+  AFTER_RESOLVER
+}
+
+type Query {
+  search(
+    term: String!
+
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    where: ISearchResultFilterInput
+  ): SearchConnection
+  comments(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    where: CommentTypeFilterInput
+    order: [CommentTypeSortInput!]
+  ): CommentsConnection
+  users(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    where: UserTypeFilterInput
+    order: [UserTypeSortInput!]
+  ): UsersConnection
+  communities(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    where: CommunityTypeFilterInput
+    order: [CommunityTypeSortInput!]
+  ): CommunitiesConnection
+  posts(
+    """
+    Returns the first _n_ elements from the list.
+    """
+    first: Int
+
+    """
+    Returns the elements in the list that come after the specified cursor.
+    """
+    after: String
+
+    """
+    Returns the last _n_ elements from the list.
+    """
+    last: Int
+
+    """
+    Returns the elements in the list that come before the specified cursor.
+    """
+    before: String
+    where: PostTypeFilterInput
+    order: [PostTypeSortInput!]
+  ): PostsConnection
+}
+
+type Mutation {
+  postComment(message: CreateCommentInput!): CommentMutationType!
+  deleteAllComments(username: String!): Response!
+  deleteComment(id: UUID!): Response!
+  createUser(user: UserInput!): UserMutationType!
+  updateLastSeen: UserMutationType!
+  deleteUser(username: String!): Boolean!
+  createCommunity(community: CreateCommunityInput!): CommunityMutationType!
+  subscribeToCommunity(name: String!): Response!
+  unSubscribeFromCommunity(name: String!): Response!
+  createPost(post: CreatePostInput!): PostMutationType!
+  editPost(post: EditPostInput!): PostMutationType!
+  deletePost(id: UUID!): Response!
+  likePost(id: UUID!): Response!
+}
+
+type Subscription {
+  commentPosted: CommentType!
+  userTyping(username: String!): UserType!
+}
+
+type CommentType {
+  user: UserType!
+  post: PostType!
+  replyTo: CommentType
+  replies: [CommentType!]!
+  id: UUID!
+  text: String!
+  timeStamp: DateTime!
+  creatorId: String!
+  postId: UUID!
+  replyToId: UUID
+  replyIds: [UUID!]!
+}
+
+type CommunityMutationType {
+  name: String!
+  bannerImage: [Byte!]
+}
+
+type UserType {
+  communitySubscriptions: [CommunityType!]!
+  id: String!
+  username: String!
+  lastSeen: DateTime!
+  subscriptionIds: [String!]!
+}
+
+type UserMutationType {
+  id: String!
+  username: String!
+  lastSeen: DateTime!
+}
+
+type CommunityType {
+  subscribers: [UserType!]!
+  posts: [PostType!]!
+  name: String!
+  bannerImage: [Byte!]
+  subscriberIds: [String!]!
+  postIds: [UUID!]!
+}
+
+type PostType {
+  community: CommunityType!
+  creator: UserType!
+  comments: [CommentType!]!
+  userLikes: [UserType!]!
+  id: UUID!
+  title: String!
+  text: String!
+  timestamp: DateTime!
+  communityName: String!
+  creatorId: String!
+  commentIds: [UUID!]!
+  likeIds: [String!]!
+}
+
+type PostMutationType {
+  id: UUID!
+  title: String!
+  text: String!
+  timestamp: DateTime!
+  communityName: String!
+  creatorId: String!
+}
+
+type Response {
+  success: Boolean!
+  message: String!
+}
+
+input ISearchResultFilterInput {
+  and: [ISearchResultFilterInput!]
+  or: [ISearchResultFilterInput!]
+}
+
+"""
+A connection to a list of items.
+"""
+type SearchConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  A list of edges.
+  """
+  edges: [SearchEdge!]
+
+  """
+  A flattened list of the nodes.
+  """
+  nodes: [SearchResult!]
+  totalCount: Int!
+}
+
+input CommentTypeFilterInput {
+  and: [CommentTypeFilterInput!]
+  or: [CommentTypeFilterInput!]
+  id: ComparableGuidOperationFilterInput
+  text: StringOperationFilterInput
+  timeStamp: ComparableDateTimeOperationFilterInput
+  creatorId: StringOperationFilterInput
+  postId: ComparableGuidOperationFilterInput
+  replyToId: ComparableNullableOfGuidOperationFilterInput
+  replyIds: ListComparableGuidOperationFilterInput
+}
+
+input CommentTypeSortInput {
+  id: SortEnumType
+  text: SortEnumType
+  timeStamp: SortEnumType
+  creatorId: SortEnumType
+  postId: SortEnumType
+  replyToId: SortEnumType
+}
+
+"""
+A connection to a list of items.
+"""
+type CommentsConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  A list of edges.
+  """
+  edges: [CommentsEdge!]
+
+  """
+  A flattened list of the nodes.
+  """
+  nodes: [CommentType!]
+  totalCount: Int!
+}
+
+input UserTypeFilterInput {
+  and: [UserTypeFilterInput!]
+  or: [UserTypeFilterInput!]
+  id: StringOperationFilterInput
+  username: StringOperationFilterInput
+  lastSeen: ComparableDateTimeOperationFilterInput
+  subscriptionIds: ListStringOperationFilterInput
+}
+
+input UserTypeSortInput {
+  id: SortEnumType
+  username: SortEnumType
+  lastSeen: SortEnumType
+}
+
+"""
+A connection to a list of items.
+"""
+type UsersConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  A list of edges.
+  """
+  edges: [UsersEdge!]
+
+  """
+  A flattened list of the nodes.
+  """
+  nodes: [UserType!]
+  totalCount: Int!
+}
+
+input CommunityTypeFilterInput {
+  and: [CommunityTypeFilterInput!]
+  or: [CommunityTypeFilterInput!]
+  name: StringOperationFilterInput
+  bannerImage: ListComparableByteOperationFilterInput
+  subscriberIds: ListStringOperationFilterInput
+  postIds: ListComparableGuidOperationFilterInput
+}
+
+input CommunityTypeSortInput {
+  name: SortEnumType
+}
+
+"""
+A connection to a list of items.
+"""
+type CommunitiesConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  A list of edges.
+  """
+  edges: [CommunitiesEdge!]
+
+  """
+  A flattened list of the nodes.
+  """
+  nodes: [CommunityType!]
+  totalCount: Int!
+}
+
+input PostTypeFilterInput {
+  and: [PostTypeFilterInput!]
+  or: [PostTypeFilterInput!]
+  id: ComparableGuidOperationFilterInput
+  title: StringOperationFilterInput
+  text: StringOperationFilterInput
+  timestamp: ComparableDateTimeOperationFilterInput
+  communityName: StringOperationFilterInput
+  creatorId: StringOperationFilterInput
+  commentIds: ListComparableGuidOperationFilterInput
+  likeIds: ListStringOperationFilterInput
+}
+
+input PostTypeSortInput {
+  id: SortEnumType
+  title: SortEnumType
+  text: SortEnumType
+  timestamp: SortEnumType
+  communityName: SortEnumType
+  creatorId: SortEnumType
+}
+
+"""
+A connection to a list of items.
+"""
+type PostsConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+
+  """
+  A list of edges.
+  """
+  edges: [PostsEdge!]
+
+  """
+  A flattened list of the nodes.
+  """
+  nodes: [PostType!]
+  totalCount: Int!
+}
+
+"""
+Information about pagination in a connection.
+"""
+type PageInfo {
+  """
+  Indicates whether more edges exist following the set defined by the clients arguments.
+  """
+  hasNextPage: Boolean!
+
+  """
+  Indicates whether more edges exist prior the set defined by the clients arguments.
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue.
+  """
+  startCursor: String
+
+  """
+  When paginating forwards, the cursor to continue.
+  """
+  endCursor: String
+}
+
+union SearchResult = CommentType | UserType
+
+"""
+An edge in a connection.
+"""
+type SearchEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: SearchResult!
+}
+
+input ComparableGuidOperationFilterInput {
+  eq: UUID
+  neq: UUID
+  in: [UUID!]
+  nin: [UUID!]
+  gt: UUID
+  ngt: UUID
+  gte: UUID
+  ngte: UUID
+  lt: UUID
+  nlt: UUID
+  lte: UUID
+  nlte: UUID
+}
+
+input StringOperationFilterInput {
+  and: [StringOperationFilterInput!]
+  or: [StringOperationFilterInput!]
+  eq: String
+  neq: String
+  contains: String
+  ncontains: String
+  in: [String]
+  nin: [String]
+  startsWith: String
+  nstartsWith: String
+  endsWith: String
+  nendsWith: String
+}
+
+input ComparableDateTimeOperationFilterInput {
+  eq: DateTime
+  neq: DateTime
+  in: [DateTime!]
+  nin: [DateTime!]
+  gt: DateTime
+  ngt: DateTime
+  gte: DateTime
+  ngte: DateTime
+  lt: DateTime
+  nlt: DateTime
+  lte: DateTime
+  nlte: DateTime
+}
+
+input ComparableNullableOfGuidOperationFilterInput {
+  eq: UUID
+  neq: UUID
+  in: [UUID]
+  nin: [UUID]
+  gt: UUID
+  ngt: UUID
+  gte: UUID
+  ngte: UUID
+  lt: UUID
+  nlt: UUID
+  lte: UUID
+  nlte: UUID
+}
+
+input ListComparableGuidOperationFilterInput {
+  all: ComparableGuidOperationFilterInput
+  none: ComparableGuidOperationFilterInput
+  some: ComparableGuidOperationFilterInput
+  any: Boolean
+}
+
+enum SortEnumType {
+  ASC
+  DESC
+}
+
+"""
+An edge in a connection.
+"""
+type CommentsEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: CommentType!
+}
+
+input ListStringOperationFilterInput {
+  all: StringOperationFilterInput
+  none: StringOperationFilterInput
+  some: StringOperationFilterInput
+  any: Boolean
+}
+
+"""
+An edge in a connection.
+"""
+type UsersEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: UserType!
+}
+
+input ListComparableByteOperationFilterInput {
+  all: ComparableByteOperationFilterInput
+  none: ComparableByteOperationFilterInput
+  some: ComparableByteOperationFilterInput
+  any: Boolean
+}
+
+"""
+An edge in a connection.
+"""
+type CommunitiesEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: CommunityType!
+}
+
+"""
+An edge in a connection.
+"""
+type PostsEdge {
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+
+  """
+  The item at the end of the edge.
+  """
+  node: PostType!
+}
+
+input ComparableByteOperationFilterInput {
+  eq: Byte
+  neq: Byte
+  in: [Byte!]
+  nin: [Byte!]
+  gt: Byte
+  ngt: Byte
+  gte: Byte
+  ngte: Byte
+  lt: Byte
+  nlt: Byte
+  lte: Byte
+  nlte: Byte
+}
+
+"""
+The `Byte` scalar type represents non-fractional whole numeric values. Byte can represent values between 0 and 255.
+"""
+scalar Byte
+
+"""
+The `DateTime` scalar represents an ISO-8601 compliant date time type.
+"""
+scalar DateTime
+
+scalar UUID
+
+input EditPostInput {
+  id: UUID!
+  title: String!
+  text: String!
+}
+
+input CreatePostInput {
+  communityName: String!
+  title: String!
+  text: String!
+}
+
+input CreateCommunityInput {
+  name: String!
+  bannerImage: [Byte!]
+}
+
+input UserInput {
+  username: String!
+}
+
+input CreateCommentInput {
+  postId: UUID!
+  text: String!
+  replyToId: UUID
+}
+
+type CommentMutationType {
+  id: UUID!
+  text: String!
+  timeStamp: DateTime!
+  creatorId: String!
+  postId: UUID!
+  replyToId: UUID
+}
