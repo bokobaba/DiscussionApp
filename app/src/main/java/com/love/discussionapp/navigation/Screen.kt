@@ -7,11 +7,15 @@ const val COMMUNITY_NAME_ARG = "communityName"
 const val POST_ID_ARG = "postId"
 
 const val ROOT_GRAPH_ROUTE = "root"
+
 const val HOME_GRAPH_ROUTE = "home_root"
 const val HOME_ROUTE = "Home"
+
 const val ACCOUNT_GRAPH_ROUTE = "account_root"
 const val ACCOUNT_ROUTE = "Account"
+
 const val COMMUNITY_ROUTE = "Community?name={$COMMUNITY_NAME_ARG}"
+
 const val POST_ROUTE = "Post?id={$POST_ID_ARG}"
 
 sealed class Screen(val route: String) {

@@ -1,0 +1,6 @@
+mutation subscribeToCommunity($name: String!) {
+    subscribeToCommunity(name: $name) {
+        success
+        message
+    }
+}

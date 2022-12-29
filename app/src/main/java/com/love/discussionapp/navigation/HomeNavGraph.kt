@@ -2,6 +2,7 @@ package com.love.discussionapp.navigation
 
 import androidx.navigation.*
 import androidx.navigation.compose.composable
+import com.love.discussionapp.feature_community.presentation.CommunityScreen
 import com.love.discussionapp.feature_home.presentation.HomeScreen
 
 fun NavGraphBuilder.HomeNavGraph(navHostController: NavHostController) {
@@ -22,7 +23,7 @@ fun NavGraphBuilder.HomeNavGraph(navHostController: NavHostController) {
             })
         ) {
             it.arguments?.getString(COMMUNITY_NAME_ARG)?.let {
-                //community screen
+                CommunityScreen(navController = navHostController)
             }
         }
         composable(

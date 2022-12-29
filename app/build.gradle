@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId "com.love.discussionapp"
-        minSdk 21
+        minSdk 26
         targetSdk 32
         versionCode 1
         versionName "1.0"
@@ -66,6 +66,7 @@ dependencies {
     androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
     debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
     debugImplementation "androidx.compose.ui:ui-test-manifest:$compose_version"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:1.7.20"
 
     // ViewModel Compose
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1"
@@ -102,10 +103,14 @@ dependencies {
     // apollo
     implementation "com.apollographql.apollo3:apollo-runtime:3.7.3"
 
+    // Coil Image library
+    implementation "io.coil-kt:coil-compose:2.2.2"
+
 }
 
 apollo {
     service("service") {
         packageName.set("com.love.discussionapp")
+        generateOptionalOperationVariables.set(false)
     }
 }

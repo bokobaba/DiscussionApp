@@ -103,6 +103,7 @@ type Query {
     where: CommentTypeFilterInput
     order: [CommentTypeSortInput!]
   ): CommentsConnection
+  comment(id: UUID!): [CommentType!]!
   users(
     """
     Returns the first _n_ elements from the list.
@@ -126,6 +127,7 @@ type Query {
     where: UserTypeFilterInput
     order: [UserTypeSortInput!]
   ): UsersConnection
+  user(id: String!): [UserType!]!
   communities(
     """
     Returns the first _n_ elements from the list.
@@ -149,6 +151,7 @@ type Query {
     where: CommunityTypeFilterInput
     order: [CommunityTypeSortInput!]
   ): CommunitiesConnection
+  community(name: String!): [CommunityType!]!
   posts(
     """
     Returns the first _n_ elements from the list.
@@ -172,6 +175,7 @@ type Query {
     where: PostTypeFilterInput
     order: [PostTypeSortInput!]
   ): PostsConnection
+  post(id: UUID!): [PostType!]!
 }
 
 type Mutation {
@@ -199,7 +203,10 @@ type CommentType {
   user: UserType!
   post: PostType!
   replyTo: CommentType
-  replies: [CommentType!]!
+  replies(
+    where: CommentTypeFilterInput
+    order: [CommentTypeSortInput!]
+  ): [CommentType!]!
   id: UUID!
   text: String!
   timeStamp: DateTime!
@@ -215,7 +222,10 @@ type CommunityMutationType {
 }
 
 type UserType {
-  communitySubscriptions: [CommunityType!]!
+  communitySubscriptions(
+    where: CommunityTypeFilterInput
+    order: [CommunityTypeSortInput!]
+  ): [CommunityType!]!
   id: String!
   username: String!
   lastSeen: DateTime!
@@ -229,10 +239,13 @@ type UserMutationType {
 }
 
 type CommunityType {
-  subscribers: [UserType!]!
-  posts: [PostType!]!
+  subscribers(
+    where: UserTypeFilterInput
+    order: [UserTypeSortInput!]
+  ): [UserType!]!
+  posts(where: PostTypeFilterInput, order: [PostTypeSortInput!]): [PostType!]!
   name: String!
-  bannerImage: [Byte!]
+  bannerImage: String
   subscriberIds: [String!]!
   postIds: [UUID!]!
 }
@@ -240,8 +253,14 @@ type CommunityType {
 type PostType {
   community: CommunityType!
   creator: UserType!
-  comments: [CommentType!]!
-  userLikes: [UserType!]!
+  comments(
+    where: CommentTypeFilterInput
+    order: [CommentTypeSortInput!]
+  ): [CommentType!]!
+  userLikes(
+    where: UserTypeFilterInput
+    order: [UserTypeSortInput!]
+  ): [UserType!]!
   id: UUID!
   title: String!
   text: String!
@@ -374,13 +393,14 @@ input CommunityTypeFilterInput {
   and: [CommunityTypeFilterInput!]
   or: [CommunityTypeFilterInput!]
   name: StringOperationFilterInput
-  bannerImage: ListComparableByteOperationFilterInput
+  bannerImage: StringOperationFilterInput
   subscriberIds: ListStringOperationFilterInput
   postIds: ListComparableGuidOperationFilterInput
 }
 
 input CommunityTypeSortInput {
   name: SortEnumType
+  bannerImage: SortEnumType
 }
 
 """
@@ -598,13 +618,6 @@ type UsersEdge {
   node: UserType!
 }
 
-input ListComparableByteOperationFilterInput {
-  all: ComparableByteOperationFilterInput
-  none: ComparableByteOperationFilterInput
-  some: ComparableByteOperationFilterInput
-  any: Boolean
-}
-
 """
 An edge in a connection.
 """
@@ -635,30 +648,15 @@ type PostsEdge {
   node: PostType!
 }
 
-input ComparableByteOperationFilterInput {
-  eq: Byte
-  neq: Byte
-  in: [Byte!]
-  nin: [Byte!]
-  gt: Byte
-  ngt: Byte
-  gte: Byte
-  ngte: Byte
-  lt: Byte
-  nlt: Byte
-  lte: Byte
-  nlte: Byte
-}
+"""
+The `DateTime` scalar represents an ISO-8601 compliant date time type.
+"""
+scalar DateTime
 
 """
 The `Byte` scalar type represents non-fractional whole numeric values. Byte can represent values between 0 and 255.
 """
 scalar Byte
-
-"""
-The `DateTime` scalar represents an ISO-8601 compliant date time type.
-"""
-scalar DateTime
 
 scalar UUID
 

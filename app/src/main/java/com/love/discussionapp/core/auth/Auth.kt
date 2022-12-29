@@ -1,5 +1,6 @@
 package com.love.discussionapp.core.auth
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -9,10 +10,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GetTokenResult
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.auth.ktx.userProfileChangeRequest
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.love.discussionapp.core.data.repository.IDataStoreRepository
 import com.love.discussionapp.core.util.Constants
+import com.love.discussionapp.core.util.TAG
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -28,11 +31,14 @@ interface IAuth {
     fun signIn(email: String, password: String, onComplete: (AuthEvent) -> Unit)
     fun logout()
     fun getAccessToken(onComplete: (String?) -> Unit)
+    fun updateProfileImage(url: String, onSuccess: () -> Unit, onFail: () -> Unit)
+    fun updateDisplayName(name: String, onSuccess: () -> Unit, onFail: () -> Unit)
 }
 
 class Auth @Inject constructor() : IAuth {
     private var _auth: FirebaseAuth
-    private var _user: MutableState<FirebaseUser?> = mutableStateOf(null)
+//    private var _user: MutableState<FirebaseUser?> = mutableStateOf(null)
+    private var _user: FirebaseUser? = null
     private var _accessToken: MutableState<String?> = mutableStateOf(null)
 
     override val accessToken: String?
@@ -42,17 +48,17 @@ class Auth @Inject constructor() : IAuth {
         get() = _auth
 
     override val user: FirebaseUser?
-        get() = _user.value
+        get() = _user
 
     init {
         Log.d("Auth", "init")
         _auth = Firebase.auth
-        _user.value = _auth.currentUser
+        _user = _auth.currentUser
         Log.d("Auth", "user: $_user")
     }
 
     override fun getAccessToken(onComplete: (String?) -> Unit) {
-        _user.value?.let {
+        _user?.let {
             it.getIdToken(true)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
@@ -76,7 +82,7 @@ class Auth @Inject constructor() : IAuth {
                 if (task.isSuccessful) {
                     // Sign in success, update UI with the signed-in user's information
                     Log.d("AccountScreen", "createUserWithEmail:success")
-                    _user.value = _auth.currentUser
+                    _user = _auth.currentUser
                     onComplete(AuthEvent.Success)
                 } else {
                     Log.w("Auth", "Authentication failed", task.exception)
@@ -91,7 +97,7 @@ class Auth @Inject constructor() : IAuth {
                 if (task.isSuccessful) {
                     // Sign in success, update UI with the signed-in user's information
                     Log.d("Auth", "signInWithEmail:success")
-                    _user.value = _auth.currentUser
+                    _user = _auth.currentUser
                     Log.d("Auth", "user: ${Gson().toJson(user)}")
                     onComplete(AuthEvent.Success)
                 } else {
@@ -104,8 +110,50 @@ class Auth @Inject constructor() : IAuth {
 
     override fun logout() {
         _auth.signOut()
-        _user.value = null
+        _user = null
         _accessToken.value = null
+    }
+
+    override fun updateProfileImage(
+        url: String,
+        onSuccess: () -> Unit,
+        onFail: () -> Unit,
+    ) {
+        val profileUpdates = userProfileChangeRequest {
+            photoUri = Uri.parse(url)
+        }
+        _user?.let {
+            it.updateProfile(profileUpdates)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d(this.TAG(), "new photoUrl = ${_user?.photoUrl}")
+                        onSuccess()
+                    } else {
+                        onFail()
+                    }
+                }
+        }
+    }
+
+    override fun updateDisplayName(
+        name: String,
+        onSuccess: () -> Unit,
+        onFail: () -> Unit,
+    ) {
+        val profileUpdates = userProfileChangeRequest {
+            displayName = name
+        }
+        _user?.let {
+            it.updateProfile(profileUpdates)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Log.d(this.TAG(), "new displayName = ${_user?.displayName}")
+                        onSuccess()
+                    } else {
+                        onFail()
+                    }
+                }
+        }
     }
 }
 

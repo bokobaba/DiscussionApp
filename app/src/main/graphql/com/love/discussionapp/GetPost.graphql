@@ -1,0 +1,41 @@
+fragment reply on CommentType {
+    id
+    user {
+        id
+        username
+    }
+    text
+    timeStamp
+    replyToId
+}
+
+query GetPost($id: UUID!) {
+    post(id: $id) {
+        id
+        creator {
+            username
+            id
+        }
+        comments {
+            id
+            user {
+                id
+                username
+            }
+            text
+            timeStamp
+            replies {
+                ...reply
+                replies {
+                    ...reply
+                    replies {
+                        ...reply
+                        replies {
+                            replyIds
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

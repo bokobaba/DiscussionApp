@@ -26,43 +26,47 @@ import kotlinx.coroutines.launch
 @Composable
 fun AccountScreen(navController: NavController, vm: AccountViewModel = hiltViewModel()) {
     Log.d("AccountScreen", "init")
-    AccountScreenContent(onEvent = vm::onEvent)
+    val scaffoldState = rememberScaffoldState()
+    AccountScreenContent(scaffoldState = scaffoldState, onEvent = vm::onEvent)
 
-    val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(key1 = vm.init) {
+    LaunchedEffect(key1 = true) {
         vm.eventFlow.collectLatest { event ->
             Log.d("AccountScreen", "collect event")
             when (event) {
                 is AccountViewModel.UiEvent.Back -> navController.navigateUp()
                 is AccountViewModel.UiEvent.CreateAccount -> {
-                    vm.auth.createAccount(event.email, event.password) {
-                        when (it) {
-                            is AuthEvent.Fail -> {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(it.message)
-                                }
-                            }
-                            else -> {
-                                navController.navigateUp()
+                    vm.createAccount(
+                        username = event.username,
+                        email = event.email,
+                        password = event.password,
+                        onSuccess = { navController.navigateUp() },
+                        onFail = { message ->
+                            coroutineScope.launch {
+                                scaffoldState.snackbarHostState.showSnackbar(message)
                             }
                         }
-                    }
+                    )
                 }
                 is AccountViewModel.UiEvent.Login -> {
-                    vm.auth.signIn(event.email, event.password) {
-                        when (it) {
-                            is AuthEvent.Fail -> {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(it.message)
-                                }
-                            }
-                            else -> {
-                                navController.navigateUp()
+                    vm.login(
+                        email = event.email,
+                        password = event.password,
+                        onSuccess = { navController.navigateUp() },
+                        onFail = { message ->
+                            coroutineScope.launch {
+                                scaffoldState.snackbarHostState.showSnackbar(message)
                             }
                         }
-                    }
+                    )
+                }
+                is AccountViewModel.UiEvent.UsernameAlreadyExists -> {
+                    scaffoldState.snackbarHostState.showSnackbar("Username already exists")
+                }
+                is AccountViewModel.UiEvent.Error -> {
+                    Log.d("AccountScreen", event.message)
+                    scaffoldState.snackbarHostState.showSnackbar("An error occurred")
                 }
             }
         }
@@ -70,10 +74,9 @@ fun AccountScreen(navController: NavController, vm: AccountViewModel = hiltViewM
 }
 
 @Composable
-fun AccountScreenContent(onEvent: (AccountScreenEvent) -> Unit) {
+fun AccountScreenContent(scaffoldState: ScaffoldState, onEvent: (AccountScreenEvent) -> Unit) {
     Log.d("AccountScreenContent", "init")
-    val scaffoldState = rememberScaffoldState()
-    val isLogin: MutableState<Boolean> = remember { mutableStateOf(true) }
+    var isLogin: Boolean by remember { mutableStateOf(false) }
     Scaffold(
         scaffoldState = scaffoldState,
         topBar = {
@@ -90,8 +93,11 @@ fun AccountScreenContent(onEvent: (AccountScreenEvent) -> Unit) {
                     )
                 },
                 actions = {
-                    Button(onClick = { isLogin != isLogin }) {
-                        Text(text = if (isLogin.value) "Create Account" else "Login")
+                    Button(onClick = {
+                        isLogin = !isLogin
+                        Log.d("click", "isLogin = $isLogin")
+                    }) {
+                        Text(text = if (isLogin) "Create Account" else "Login")
                     }
                 },
             )
@@ -100,7 +106,7 @@ fun AccountScreenContent(onEvent: (AccountScreenEvent) -> Unit) {
         AccountInfo(
             modifier = Modifier.padding(innerPadding),
             onEvent = onEvent,
-            isLogin = isLogin.value
+            isLogin = isLogin
         )
     }
 }
@@ -118,6 +124,7 @@ fun AccountInfo(
     ) {
         var email = rememberSaveable { mutableStateOf("") }
         var password = rememberSaveable { mutableStateOf("") }
+        var username = rememberSaveable { mutableStateOf("") }
 
         Text(
             text = if (isLogin) "Log In" else "Create Account",
@@ -128,14 +135,32 @@ fun AccountInfo(
 
         Spacer(modifier = Modifier.height(10.dp))
 
+        if (!isLogin)
+            UsernameTextField(username = username)
+
         EmailTextField(email = email)
 
         PasswordTextField(password = password)
 
         Spacer(modifier = Modifier.height(50.dp))
 
-        ContinueButton(email = email, password = password, isLogin = isLogin, onEvent = onEvent)
+        ContinueButton(
+            username = username,
+            email = email,
+            password = password,
+            isLogin = isLogin,
+            onEvent = onEvent
+        )
     }
+}
+
+@Composable
+fun UsernameTextField(username: MutableState<String>) {
+    OutlinedTextField(
+        label = { Text(text = "Username") },
+        value = username.value,
+        onValueChange = { username.value = it }
+    )
 }
 
 @Composable
@@ -172,6 +197,7 @@ fun PasswordTextField(password: MutableState<String>) {
 fun ContinueButton(
     email: MutableState<String>,
     password: MutableState<String>,
+    username: MutableState<String>,
     isLogin: Boolean,
     onEvent: (AccountScreenEvent) -> Unit
 ) {
@@ -188,7 +214,8 @@ fun ContinueButton(
                 onEvent(
                     AccountScreenEvent.CreateAccount(
                         email = email.value,
-                        password = password.value
+                        password = password.value,
+                        username = username.value!!
                     )
                 )
         }
@@ -200,5 +227,7 @@ fun ContinueButton(
 @Composable
 @Preview
 fun AccountScreenPreview() {
-    AccountScreenContent(onEvent = {})
+    AccountScreenContent(
+        scaffoldState = rememberScaffoldState(),
+        onEvent = {})
 }

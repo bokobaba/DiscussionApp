@@ -1,8 +1,6 @@
 package com.love.discussionapp.feature_home.presentation
 
 import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
@@ -17,7 +15,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val apiRepository: ApiRepository,
+    private val _repository: ApiRepository,
     private val _auth: IAuth,
     private val _state: IHomeState,
 ) : ViewModel() {
@@ -50,7 +48,7 @@ class HomeViewModel @Inject constructor(
     private fun getCommunitiesFromApi() {
         viewModelScope.launch {
             when(val resource: Resource<GetCommunitiesQuery.Data?> =
-                apiRepository.getCommunities()) {
+                _repository.getCommunities()) {
                 is Resource.Success -> {
                     val data: GetCommunitiesQuery.Data? = resource.data
                     Log.d("HomeViewModel", "data: ${Gson().toJson(data)}")
@@ -73,7 +71,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun onEvent(event: HomeScreenEvent) {
+        when (event) {
+            is HomeScreenEvent.SelectCommunity -> viewModelScope.launch {
+                _eventFlow.emit(HomeViewModel.UiEvent.CommunitySelected(event.name))
+            }
+        }
+    }
+
     sealed class UiEvent {
         data class FetchDataError(val message: String): UiEvent()
+        data class CommunitySelected(val name: String): UiEvent()
     }
 }

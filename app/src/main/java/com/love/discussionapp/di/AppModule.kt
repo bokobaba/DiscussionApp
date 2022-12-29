@@ -19,6 +19,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import java.security.cert.X509Certificate
+import javax.inject.Named
+import javax.inject.Qualifier
 import javax.inject.Singleton
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
@@ -36,6 +38,51 @@ object AppModule {
 
     @Provides
     @Singleton
+    @NoAuthorization
+    fun provideClientNoInterceptor(): ApolloClient {
+        val client = OkHttpClient.Builder()
+
+        if (BuildConfig.DEBUG) {
+            //set self sign certificate
+            val trustAllCerts = arrayOf<TrustManager>(@SuppressLint("CustomX509TrustManager")
+            object : X509TrustManager {
+                override fun checkClientTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?
+                ) {
+                }
+
+                override fun checkServerTrusted(
+                    chain: Array<out X509Certificate>?,
+                    authType: String?
+                ) {
+                }
+
+                override fun getAcceptedIssuers() = arrayOf<X509Certificate>()
+            })
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+
+            // Create an ssl socket factory with our all-trusting manager
+            val sslSocketFactory = sslContext.socketFactory
+
+            client
+                .sslSocketFactory(
+                    sslSocketFactory,
+                    trustAllCerts[0] as X509TrustManager
+                )
+                .hostnameVerifier { _, _ -> true }
+        }
+
+        return ApolloClient.Builder()
+            .serverUrl(Constants.BASE_URL)
+            .okHttpClient(client.build())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Authorization
     fun provideClient(authorizationInterceptor: AuthorizationInterceptor): ApolloClient {
         val client = OkHttpClient.Builder()
             .addInterceptor(authorizationInterceptor)
@@ -72,8 +119,6 @@ object AppModule {
                 .hostnameVerifier { _, _ -> true }
         }
 
-//            .build()
-
         return ApolloClient.Builder()
             .serverUrl(Constants.BASE_URL)
             .okHttpClient(client.build())
@@ -88,8 +133,9 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideApi(apolloClient: ApolloClient): Api {
-        return Api(apolloClient)
+    fun provideApi(@NoAuthorization apolloClient: ApolloClient,
+                   @Authorization apolloClientAuth: ApolloClient): Api {
+        return Api(apolloClient = apolloClient, apolloClientAuth = apolloClientAuth)
     }
 
     @Provides
@@ -104,3 +150,11 @@ object AppModule {
         return DataStoreRepository(context)
     }
 }
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class Authorization
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class NoAuthorization

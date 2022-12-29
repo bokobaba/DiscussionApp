@@ -1,0 +1,18 @@
+query GetCommunity($name: String!) {
+    community(name: $name) {
+        name
+        bannerImage
+        posts {
+            timestamp
+            title
+            id
+            creator {
+                id
+                username
+            }
+            commentIds
+            likeIds
+        }
+        subscriberIds
+    }
+}

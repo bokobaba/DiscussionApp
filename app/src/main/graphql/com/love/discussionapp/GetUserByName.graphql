@@ -1,0 +1,8 @@
+query getUserByName($name: String!) {
+    users(where: { username: { eq: $name }}) {
+        nodes {
+            username
+        }
+        totalCount
+    }
+}
